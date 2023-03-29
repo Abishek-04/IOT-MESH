@@ -1,0 +1,86 @@
+
+#include "namedMesh.h"
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define OLED_RESET     -1 // Reset pin
+#define SCREEN_ADDRESS 0x3C
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+#define MESH_SSID "whateverYouLike"
+#define MESH_PASSWORD "somethingSneaky"
+#define MESH_PORT 5555
+
+Scheduler userScheduler;  // to control your personal task
+namedMesh mesh;
+
+String nodeName = "C-1";  // Name needs to be unique
+
+void initOLED() {
+  //  pinMode(OLED_RST, OUTPUT);
+  //  //Give a low to high pulse to the OLED display to reset it
+  //  //This is optional and not required for OLED modules not containing a reset pin
+  //  digitalWrite(OLED_RST, LOW);
+  //  delay(20);
+  //  digitalWrite(OLED_RST, HIGH);
+
+    if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); // Don't proceed, loop forever
+  }
+}
+void showOLEDMessage(String) {
+  //  display.init();
+   display.clearDisplay();
+   display.setTextColor(BLACK, WHITE); // 'inverted' text
+   display.setCursor(0,28);
+   // display.println("Hello world!");
+   display.display();
+  //  display.setFont(ArialMT_Plain_10);
+  //  display.drawString(0, 0, line1);
+  // //  static int messageCount = 0;
+  // //  messageCount++;
+  // //  display.println("Count: " + String(messageCount));
+  //  display.display();                     // displays content in buffer
+
+}
+
+Task taskSendMessage(TASK_SECOND * 2, TASK_FOREVER, []() {
+  String msg = String("ON");
+  String to = "C-3";
+  mesh.sendSingle(to, msg);
+});  // start with a one second interval
+
+void setup() {
+  pinMode(LED_BUILTIN, OUTPUT);
+  // Serial.begin(115200);
+  initOLED();
+  mesh.setDebugMsgTypes(ERROR | DEBUG | CONNECTION);  // set before init() so that you can see startup messages
+
+  mesh.init(MESH_SSID, MESH_PASSWORD, &userScheduler, MESH_PORT);
+
+  mesh.setName(nodeName);  // This needs to be an unique name!
+  mesh.onReceive([](String &from, String &msg) {
+    showOLEDMessage(msg.c_str());
+    // Serial.printf("Received message by name from: %s, %s\n", from.c_str(), msg.c_str());
+  });
+
+
+  mesh.onChangedConnections([]() {
+    // Serial.printf("Changed connection\n");
+    // digitalWrite(LED_BUILTIN, HIGH);
+    // delay(1000);
+    // digitalWrite(LED_BUILTIN, LOW);
+
+  });
+  userScheduler.addTask(taskSendMessage);
+  taskSendMessage.enable();
+
+}
+
+void loop() {
+  // it will run the user scheduler as well
+  mesh.update();
+}
