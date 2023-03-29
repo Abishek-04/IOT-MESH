@@ -1,0 +1,37 @@
+#include <PainlessMesh.h>
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+
+#define MESH_PREFIX "mesh_" // mesh network SSID prefix
+#define MESH_PASSWORD "mypassword" // mesh network password
+#define MESH_PORT 5555 // mesh network port
+#define BUTTON_PIN D1 // button pin
+#define REQUEST_URL "http://example.com/api/action" // URL to send HTTP request to
+
+// Create a mesh network with the given prefix and password
+PainlessMesh mesh(MESH_PREFIX, MESH_PASSWORD);
+
+// Function to be called when the button is pressed
+void buttonPressed() {
+  // Send an HTTP request to the specified URL
+  WiFiClient client;
+  HTTPClient http;
+  http.begin(client, REQUEST_URL);
+  http.GET();
+  http.end();
+}
+
+void setup() {
+  // Initialize the mesh network
+  mesh.setDebugMsgTypes(ERROR | STARTUP | CONNECTION);
+  mesh.init(MESH_PORT);
+
+  // Set up the button pin
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonPressed, FALLING);
+}
+
+void loop() {
+  // Update the mesh network
+  mesh.update();
+}
